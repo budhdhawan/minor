@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <title>ASM</title>
+<head>
+    <body>
+      <nav class="navbar navbar-expand-lg bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Automated Parkig System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="login.html">login</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            Availability check
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="availability.html">Availability check</a></li>
+                            <li><a class="dropdown-item" href="info.html">Parking entry</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    
+            </div>
+        </div>
+    </nav>
+
+        <div class="ab">
+            <div class="card my-3">
+              <div class="card-header px-3 d-flex">
+                <h5 class="m-0">Parking management</h5>
+                <div class="ml-auto">
+                  <span id="placesCount" class="badge badge-success"></span> available places
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="input-group p-2" id="addForm">
+                  <input type="text" class="form-control" id="carValue" placeholder="Registration number">
+                  <div class="input-group-append">
+                    <button id="carButton" class="btn btn-sm btn-success">Park car</button>
+                  </div>
+                  <p id="message" class="text-danger m-0">Registration number invalid</p>
+                </div>
+                <div class="table-responsive">
+                  <table id="parking" class="table table-striped m-0">
+                    <thead>
+                      <tr>
+                        <th>Registration no</th>
+                        <th>Arrival</th>
+                        <th>Departure</th>
+                        <th>Status</th>
+                        <th class="text-right">Bill</th>
+                        <th class="text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal" id="myModal">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h6 class="modal-title">Sumar Parcare</h6>
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div id="modalBody" class="modal-body"></div>
+              </div>
+            </div>
+          </div>
+          <script>
+            let cars = [];
+        const addCarButton = document.querySelector('#carButton');
+        const minLicenseeLength = 7;
+        const payPerHour = 5;
+        const payFirstHour = 12;
+        const totalPlaces = 100;
+        
+        const formatDate = (date) => {
+          var hours = date.getHours();
+          var minutes = date.getMinutes();
+          var ampm = hours >= 12 ? 'PM' : 'AM';
+          hours = hours % 12;
+          hours = hours ? hours : 12;
+          minutes = minutes < 10 ? '0' + minutes : minutes;
+          var strTime = hours + ':' + minutes + ' ' + ampm;
+          return date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear() + " " + strTime;
+        }
+        
+        const secondsToHours = (d) => {
+          d = Number(d);
+          let h = Math.ceil(d / 3600);
+          return h;
+        }
+        
+        const renterTable = () => {
+          let results = '';
+          for (var i = 0; i < cars.length; i++) {
+            let licensee = cars[i].licensee;
+            let arrival = formatDate(cars[i].arrival);
+            let leave = cars[i].leave === '-' ? '-' : formatDate(cars[i].leave);
+        
+            results += `<tr>
+                  <td>${licensee}</td>
+                  <td>${arrival}</td>
+                  <td>${leave}</td>
+                  <td>${showStatus(cars[i])}</td>
+                  <td class="text-right">${makeBill(cars[i])}</td>
+                  <td class="text-right">
+                    <button data-row="${i}" onclick="showSummary(event)" data-toggle="modal" data-target="#myModal" class="btn btn-sm btn-success">Summary</button>
+                            </td>
+                </tr>`;
+          }
+          document.querySelector("#parking tbody").innerHTML = results;
+        }
+        
+        const showStatus = (car) => {
+          return car.isParked ? "Parked" : "Has left";
+        }
+        
+        const changeStatus = (event) => {
+          cars[event.target.dataset.row].isParked = false;
+        }
+        
+        const setLeaveTime = (event) => {
+          cars[event.target.dataset.row].leave = new Date(Date.now());
+        }
+        
+        const countAvailablePlaces = (event) => {
+          document.querySelector('#placesCount').innerHTML = totalPlaces - cars.length;
+        }
+        
+        const setClassForBadge = () => {
+          let badgeClassName = cars.length == totalPlaces ? 'badge badge-danger' : 'badge badge-success';
+          document.querySelector('#placesCount').setAttribute('class', badgeClassName);
+        }
+        
+        const calculateHoursBilled = (car) => {
+          let arrivedAt = new Date(car.arrival).getTime();
+          let leftAt = new Date(car.leave).getTime();
+          return secondsToHours((leftAt - arrivedAt) / 1000); //duration in seconds
+        }
+        
+        const makeBill = (car) => {
+          let hoursBilled = calculateHoursBilled(car);
+          let billValue = car.isParked ? "-" : "$" + (payFirstHour + (hoursBilled - 1) * payPerHour);
+          return billValue;
+        }
+        
+        const printSummary = (event) => {
+          let car = cars[event.target.dataset.row];
+          let sumarryTable = `<table class="table table-bordered m-0">
+                <tr>
+                  <td class="font-weight-bold">Registration number</td>
+                  <td>${car.licensee}</td>
+                </tr>
+                <tr>
+                  <td class="font-weight-bold">Arrival</td>
+                  <td>${formatDate(car.arrival)}</td>
+                </tr>
+                <tr>
+                  <td class="font-weight-bold">Departure</td>
+                  <td>${formatDate(car.leave)}</td>
+                </tr>
+                <tr>
+                  <td class="font-weight-bold">Billable hours</td>
+                  <td>${calculateHoursBilled(car)}</td>
+                </tr>
+                <tr>
+                  <td class="font-weight-bold">Bill value</td>
+                  <td>${makeBill(car)}</td>
+              </tr></table>`;
+        
+          document.querySelector('#modalBody').innerHTML = sumarryTable;
+        }
+        
+        const showSummary = (event) => {
+          changeStatus(event);
+          setLeaveTime(event);
+          renterTable();
+          printSummary(event);
+        
+          //Free the parking place, 3 seconds after the summary is released
+          setTimeout(function() {
+            freeSpot(event);
+          }, 3000);
+        }
+        
+        const addCar = () => {
+          let newLicensee = document.querySelector("#carValue").value;
+        
+          let newCar = {
+            licensee: newLicensee,
+            arrival: new Date(),
+            leave: '-',
+            isParked: true
+          }
+        
+          // Add new car to the cars array
+        
+          document.querySelector('#message').style.display = 'none';
+          if (newLicensee.length >= minLicenseeLength && cars.length < totalPlaces) {
+            cars.unshift(newCar);
+          } else {
+            if (newLicensee.length < minLicenseeLength) {
+              document.querySelector('#message').style.display = 'block';
+            }
+          }
+        
+          if (cars.length == totalPlaces) {
+            document.querySelector('#carButton').setAttribute('disabled', true);
+          }
+        
+          setClassForBadge();
+        
+          //Update places count
+          countAvailablePlaces(event);
+        
+          // Empty text box
+          document.querySelector("#carValue").value = '';
+        
+          // Render the table
+          renterTable();
+        }
+        
+        const freeSpot = (event) => {
+          cars.splice(event.target.dataset.row, 1);
+          setClassForBadge();
+        
+          if (cars.length == totalPlaces) {
+            document.querySelector('#carButton').setAttribute('disabled');
+          } else {
+            document.querySelector('#carButton').removeAttribute('disabled');
+          }
+        
+          // Render Table again after delete 
+          renterTable();
+          //Update places count
+          countAvailablePlaces(event);
+        }
+        
+        // Add new car to the array
+        addCarButton.addEventListener('click', addCar);
+        
+        // Render Table
+        renterTable();
+        
+        //Show places count at page load
+        countAvailablePlaces(event);
+            
+        </script>
+          
+    </body>
